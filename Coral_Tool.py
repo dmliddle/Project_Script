@@ -20,7 +20,7 @@ scratch_folder = root_folder / "Scratch"
 # Define the data folder
 data_folder = root_folder / "Data"
 # Define the file path to our processed coral data folder
-coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_filtered.shp')
+coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_processed_final.shp')
 
 # Define ArcPy environment workspace
 arcpy.env.workspace = str(scratch_folder)
