@@ -10,10 +10,11 @@ from pathlib import Path
 # Import necessary ArcPy tools
 from arcpy.sa import SplineWithBarriers, Con
 
-# Define Current Folder
-script_folder = Path.cwd()
+# Enable output overwrite
+arcpy.env.overwriteOutput = True
+
 # Define the root folder
-root_folder = script_folder.parent
+root_folder = scratch_folder.parent
 # Define the scratch folder
 scratch_folder = root_folder / "Scratch"
 # Define the data folder
@@ -21,13 +22,10 @@ data_folder = root_folder / "Data"
 
 coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_filtered.shp')
 
-# Define ArcPy environment workspace
-arcpy.env.workspace = str(scratch_folder)
 # Define output workspace
 output_workspace = str(scratch_folder)
-# Enable output overwrite
+arcpy.env.workspace = output_workspace
 arcpy.env.overwriteOutput = True
-
 
 
 # Loop through each year
@@ -82,43 +80,15 @@ for year in range(2002, 2017):  # Includes 2016
 
 print("Processing complete!")
 
-# Site method Tool
+# User inputs coordinates
+x_coord = float(input("Enter the X coordinate (Longitude): "))
+y_coord = float(input("Enter the Y coordinate (Latitude): "))
 
-# List available site names for the user
-site_names = []
-with arcpy.da.SearchCursor(coral_data, ["Site_Name"]) as cursor:
-    for row in cursor:
-        if row[0] not in site_names:
-            site_names.append(row[0])
-
-# Display available site names and prompt user selection
-print("Available site names:")
-for i, site in enumerate(site_names):
-    print(f"{i + 1}: {site}")
-
-site_choice = int(input("Select a site by entering its number: ")) - 1
-selected_site = site_names[site_choice]
-
-print(f"You selected: {selected_site}")
-
-# Filter the coral data to only include the selected site
-site_layer = "in_memory\\selected_site"
-arcpy.management.MakeFeatureLayer(
-    coral_data, site_layer, f"Site_Name = '{selected_site}'"
-)
-
-# Create buffer zones around each point
-buffer_output = str(scratch_folder / f"{selected_site}_Buffer.shp")
-arcpy.analysis.Buffer(
-    in_features=site_layer,
-    out_feature_class=buffer_output,
-    buffer_distance_or_field="500 Meters",  # Adjust distance as needed
-    line_side="FULL",
-    line_end_type="ROUND",
-    dissolve_option="ALL"  # Dissolves all individual buffers into one
-)
-
-print(f"Minimum Bounding Geometry created: {mbg_output}")
+# Create a temporary point feature class for the input coordinates
+temp_point = "in_memory\\temp_point"
+arcpy.management.CreateFeatureclass("in_memory", "temp_point", "POINT", spatial_reference=4326)
+with arcpy.da.InsertCursor(temp_point, ["SHAPE@XY"]) as cursor:
+    cursor.insertRow([(x_coord, y_coord)])
 
 # Initialize results dictionary
 results = {"Year": [], "Bleaching_Percentage": []}
@@ -130,26 +100,20 @@ for year in range(2002, 2017):  # Includes 2016
     raster_path = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif"
     
     if arcpy.Exists(raster_path):
-        # Extract raster value within the selected site
+        # Extract raster value at the location
         try:
-            extracted_points = arcpy.sa.ExtractValuesToPoints(site_layer, raster_path, "in_memory\\extracted_points")
+            extracted_point = arcpy.sa.ExtractValuesToPoints(temp_point, raster_path, "in_memory\\extracted_point")
             
-            # Calculate mean bleaching percentage within the site
-            values = []
-            with arcpy.da.SearchCursor("in_memory\\extracted_points", ["RASTERVALU"]) as cursor:
+            # Read the extracted value
+            with arcpy.da.SearchCursor("in_memory\\extracted_point", ["RASTERVALU"]) as cursor:
                 for row in cursor:
-                    if row[0] is not None:
-                        values.append(row[0])
-            
-            # Calculate mean or handle no data
-            if values:
-                mean_bleaching = sum(values) / len(values)
-            else:
-                mean_bleaching = "No Data"
-            
-            results["Year"].append(year)
-            results["Bleaching_Percentage"].append(mean_bleaching)
-        
+                    bleaching_value = row[0]
+                    if bleaching_value is None:
+                        bleaching_value = "No Data"
+                    
+                    results["Year"].append(year)
+                    results["Bleaching_Percentage"].append(bleaching_value)
+                    
         except Exception as e:
             print(f"Error extracting value for year {year}: {e}")
             results["Year"].append(year)
