@@ -25,7 +25,9 @@ coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_filtered.shp')
 # Define ArcPy environment workspace
 arcpy.env.workspace = str(scratch_folder)
 # Define output workspace
-output_workspace = str(scratch_folder) # We should change this in the final version to output to a final data folder.
+output_workspace = str(scratch_folder)
+# Define final output workspace
+final_workspace = root_folder / "Final_Outputs"
 # Enable output overwrite
 arcpy.env.overwriteOutput = True # This currently isn't working right
 
@@ -44,7 +46,7 @@ for year in range(2002, 2017):  # Loops through years 2002-2016
     bounding_geometry_output = f"coral_bounds_{year}"
     spline_raster = f"v:\\Final_Project\\Scratch\\coral_bleach_spline_{year}.tif"
     con_raster = f"v:\\Final_Project\\Scratch\\Con_coral_bleach_{year}.tif"
-    clipped_raster = f"v:\\Final_Project\\Final_Outputs\\Clipped_coral_bleach_{year}.tif"
+    clipped_raster = f"v:\\Final_Project\\Final_Outputs\\coral_bleaching_{year}.tif"
 
     # Step 1: Create Minimum Bounding Geometry
     arcpy.management.MinimumBoundingGeometry(
@@ -109,7 +111,7 @@ arcpy.management.MakeFeatureLayer(
 )
 
 # Create buffer zones around each point
-buffer_output = str(root_folder / "Final_Outputs" / f"{selected_site}_Buffer.shp")
+buffer_output = str(final_workspace / f"{selected_site}_Buffer.shp")
 arcpy.analysis.Buffer(
     in_features=site_layer,
     out_feature_class=buffer_output,
