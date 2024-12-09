@@ -9,6 +9,9 @@ from pathlib import Path
 # Import necessary ArcPy tools
 from arcpy.sa import SplineWithBarriers, Con
 
+# Enable output overwrite
+arcpy.env.overwriteOutput = True
+
 # Define the root folder
 root_folder = scratch_folder.parent
 # Define the scratch folder
@@ -37,7 +40,8 @@ for year in range(2002, 2017):  # Includes 2016
     bounding_geometry_output = f"coral_bounds_{year}"
     spline_raster = f"v:\\Final_Project\\Scratch\\coral_bleach_spline_{year}.tif"
     con_raster = f"v:\\Final_Project\\Scratch\\Con_coral_bleach_{year}.tif"
-    
+    clipped_raster = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif"
+
     # Step 1: Create Minimum Bounding Geometry
     arcpy.management.MinimumBoundingGeometry(
         in_features=yearly_data, 
@@ -66,6 +70,10 @@ for year in range(2002, 2017):  # Includes 2016
     
     print(f"Corrected raster for year {year}.")
     
+        # Step 4: Clip the Raster by Bounding Geometry
+    arcpy.sa.ExtractByMask(con_raster, bounding_geometry_output).save(clipped_raster)
+    print(f"Clipped raster saved for year {year}.")
+
     # Clean up the temporary layer
     arcpy.management.Delete(f"yearly_data_{year}")
 
