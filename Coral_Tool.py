@@ -1,3 +1,4 @@
+# We need to insert a heading here
 
 # Import necessary modules
 import arcpy
@@ -18,20 +19,20 @@ root_folder = script_folder.parent
 scratch_folder = root_folder / "Scratch"
 # Define the data folder
 data_folder = root_folder / "Data"
-
+# Define the file path to our processed coral data folder
 coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_filtered.shp')
 
 # Define ArcPy environment workspace
 arcpy.env.workspace = str(scratch_folder)
 # Define output workspace
-output_workspace = str(scratch_folder)
+output_workspace = str(scratch_folder) # We should change this in the final version to output to a final data folder.
 # Enable output overwrite
-arcpy.env.overwriteOutput = True
+arcpy.env.overwriteOutput = True # This currently isn't working right
 
-
+# Tool to interpolate coral bleaching by year and create raster heat maps by year
 
 # Loop through each year
-for year in range(2002, 2017):  # Includes 2016
+for year in range(2002, 2017):  # Loops through years 2002-2016
     print(f"Processing year: {year}")
     
     # Filter the input data by year
@@ -43,7 +44,7 @@ for year in range(2002, 2017):  # Includes 2016
     bounding_geometry_output = f"coral_bounds_{year}"
     spline_raster = f"v:\\Final_Project\\Scratch\\coral_bleach_spline_{year}.tif"
     con_raster = f"v:\\Final_Project\\Scratch\\Con_coral_bleach_{year}.tif"
-    clipped_raster = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif"
+    clipped_raster = f"v:\\Final_Project\\Final_Outputs\\Clipped_coral_bleach_{year}.tif"
 
     # Step 1: Create Minimum Bounding Geometry
     arcpy.management.MinimumBoundingGeometry(
@@ -58,7 +59,7 @@ for year in range(2002, 2017):  # Includes 2016
     
     # Step 2: Perform Spline with Barriers
     spline_result = SplineWithBarriers(
-        yearly_data, "Percent_Bl", bounding_geometry_output, 
+        yearly_data, "Percent_Bl", bounding_geometry_output, # We should fix this column in our final version
         "2.29812000000002E-02", 0  # Spline parameters
     )
     spline_result.save(spline_raster)
@@ -108,7 +109,7 @@ arcpy.management.MakeFeatureLayer(
 )
 
 # Create buffer zones around each point
-buffer_output = str(scratch_folder / f"{selected_site}_Buffer.shp")
+buffer_output = str(root_folder / "Final_Outputs" / f"{selected_site}_Buffer.shp")
 arcpy.analysis.Buffer(
     in_features=site_layer,
     out_feature_class=buffer_output,
@@ -124,10 +125,10 @@ print(f"Minimum Bounding Geometry created: {mbg_output}")
 results = {"Year": [], "Bleaching_Percentage": []}
 
 # Loop through rasters for each year
-for year in range(2002, 2017):  # Includes 2016
+for year in range(2002, 2017):  # Iterate through years 2002-2016
     print(f"Processing year: {year}")
     
-    raster_path = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif"
+    raster_path = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif" # Scratch should be changed to Final_Outputs once the previous section is run.
     
     if arcpy.Exists(raster_path):
         # Extract raster value within the selected site
