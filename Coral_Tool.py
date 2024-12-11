@@ -1,40 +1,52 @@
-# We need to insert a heading here
+# -----------------------------
+# Fiona Kelley & David Liddle
+# Geospatial Data Analytics
+# ENVIRON 859.01
+# Final Project 
+#------------------------------
 
-# Import necessary modules
+#%% Import Necessary Packages 
 import arcpy
 import os
 import sys
 import pandas as pd
-
-# Import the Path function
-from pathlib import Path
 # Import necessary ArcPy tools
 from arcpy.sa import SplineWithBarriers, Con
+# Import the Path function
+from pathlib import Path
 
-# Define Current Folder
+#%% Define File Paths
+
+# Define current folder
 script_folder = Path.cwd()
-# Define the root folder
+# Define root folder
 root_folder = script_folder.parent
-# Define the scratch folder
+# Define Scratch folder
 scratch_folder = root_folder / "Scratch"
-# Define the data folder
+# Define the Data folder 
 data_folder = root_folder / "Data"
-# Define the file path to our processed coral data folder
+
+# Define the file path to our processed coral data
 coral_data = str(root_folder / 'Data' / 'Processed' / 'coral_data_processed_final.shp')
+
+#%% Workspace Setup
 
 # Define ArcPy environment workspace
 arcpy.env.workspace = str(scratch_folder)
-# Define output workspace
+# Define output workspace 
 output_workspace = str(scratch_folder)
 # Define final output workspace
 final_workspace = root_folder / "Final_Outputs"
+
 # Enable output overwrite
 arcpy.env.overwriteOutput = True # This currently isn't working right
 
-# Tool to interpolate coral bleaching by year and create raster heat maps by year
 
-# Loop through each year
-for year in range(2002, 2017):  # Loops through years 2002-2016
+#%% Interpolation Tool
+# Interpolates coral bleaching by year and creates raster heat maps
+
+# Loop through each year (2002-2016)
+for year in range(2002, 2017): 
     print(f"Processing year: {year}")
     
     # Filter the input data by year
@@ -42,13 +54,14 @@ for year in range(2002, 2017):  # Loops through years 2002-2016
         coral_data, f"yearly_data_{year}", f"Date_Year = {year}"
     )
     
-    # Generate output names for this year
+    # Generate output names by year
     bounding_geometry_output = f"coral_bounds_{year}"
     spline_raster = f"v:\\Final_Project\\Scratch\\coral_bleach_spline_{year}.tif"
     con_raster = f"v:\\Final_Project\\Scratch\\Con_coral_bleach_{year}.tif"
     clipped_raster = f"v:\\Final_Project\\Final_Outputs\\coral_bleaching_{year}.tif"
 
-    # Step 1: Create Minimum Bounding Geometry
+    # Create minimum bounding geometry
+    # This generates boundary around aggregated yearly data
     arcpy.management.MinimumBoundingGeometry(
         in_features=yearly_data, 
         out_feature_class=bounding_geometry_output, 
@@ -59,16 +72,16 @@ for year in range(2002, 2017):  # Loops through years 2002-2016
     
     print(f"Created bounding geometry for year {year}.")
     
-    # Step 2: Perform Spline with Barriers
+    # Perform spline interpolation with barriers
     spline_result = SplineWithBarriers(
-        yearly_data, "Percent_Bl", bounding_geometry_output, # We should fix this column in our final version
-        "2.29812000000002E-02", 0  # Spline parameters
+        yearly_data, "Percent_Bl", bounding_geometry_output,
+        "2.29812000000002E-02", 0  # Spline parameters obtained directly from ArcGIS Pro
     )
     spline_result.save(spline_raster)
     
     print(f"Created spline raster for year {year}.")
     
-    # Step 3: Remove Negative Values with Con
+    # Set negative values to zero using con function
     con_result = Con(
         spline_result, 0, spline_result, "VALUE < 0"
     )
@@ -76,7 +89,7 @@ for year in range(2002, 2017):  # Loops through years 2002-2016
     
     print(f"Corrected raster for year {year}.")
     
-        # Step 4: Clip the Raster by Bounding Geometry
+        # Clip the raster by bounding geometry
     arcpy.sa.ExtractByMask(con_raster, bounding_geometry_output).save(clipped_raster)
     print(f"Clipped raster saved for year {year}.")
 
@@ -85,7 +98,7 @@ for year in range(2002, 2017):  # Loops through years 2002-2016
 
 print("Processing complete!")
 
-# Site method Tool
+#%% Site Method Tool
 
 # List available site names for the user
 site_names = []
@@ -111,14 +124,26 @@ arcpy.management.MakeFeatureLayer(
 )
 
 # Create buffer zones around each point
-buffer_output = str(final_workspace / f"{selected_site}_Buffer.shp")
+buffer_output = str(scratch_folder / f"{selected_site}_Buffer.shp")
 arcpy.analysis.Buffer(
     in_features=site_layer,
     out_feature_class=buffer_output,
-    buffer_distance_or_field="500 Meters",  # Adjust distance as needed
+    buffer_distance_or_field="1000 Meters",
     line_side="FULL",
     line_end_type="ROUND",
-    dissolve_option="ALL"  # Dissolves all individual buffers into one
+    # Merge all buffers into one
+    dissolve_option="ALL"  
+)
+
+print(f"Buffer created: {buffer_output}")
+
+# Create minimum bounding geometry for the dissolved buffer
+mbg_output = str(final_workspace / f"{selected_site}_MBG.shp")
+arcpy.management.MinimumBoundingGeometry(
+    in_features=buffer_output,
+    out_feature_class=mbg_output,
+    geometry_type="CONVEX_HULL",  # Options: CONVEX_HULL, ENVELOPE, etc.
+    group_option="NONE"
 )
 
 print(f"Minimum Bounding Geometry created: {mbg_output}")
@@ -126,8 +151,8 @@ print(f"Minimum Bounding Geometry created: {mbg_output}")
 # Initialize results dictionary
 results = {"Year": [], "Bleaching_Percentage": []}
 
-# Loop through rasters for each year
-for year in range(2002, 2017):  # Iterate through years 2002-2016
+# Loop through rasters for each year (2002-2016)
+for year in range(2002, 2017):  
     print(f"Processing year: {year}")
     
     raster_path = f"v:\\Final_Project\\Scratch\\Clipped_coral_bleach_{year}.tif" # Scratch should be changed to Final_Outputs once the previous section is run.
@@ -165,6 +190,11 @@ for year in range(2002, 2017):  # Iterate through years 2002-2016
 
 # Convert results to a pandas DataFrame
 results_df = pd.DataFrame(results)
+
+# Define output path for csv file
+csv_output_path = final_workspace / f"{selected_site}_Bleaching_Percentage.csv"
+# Save the DataFrame to a CSV file
+results_df.to_csv(csv_output_path, index=False)
 
 # Display results in the console
 print("\nBleaching Percentage Table by Year")
