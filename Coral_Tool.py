@@ -44,7 +44,7 @@ arcpy.env.overwriteOutput = True # This currently isn't working right
 
 #%% Interpolation Tool
 # Interpolates coral bleaching by year and creates raster heat maps
-
+# Commands not taught in this course were sourced through the Model Builder python scripts in ArcGIS Pro. Debugging was done with the help of ChatGPT.
 # Loop through each year (2002-2016)
 for year in range(2002, 2017): 
     print(f"Processing year: {year}")
@@ -99,7 +99,7 @@ for year in range(2002, 2017):
 print("Processing complete!")
 
 #%% Site Method Tool
-
+# Certain commands not taught in this course were sourced from ChatGPT in order to accomplish this workflow. ChatGPT was also used in order to assist with debugging this section.
 # List available site names for the user
 site_names = []
 with arcpy.da.SearchCursor(coral_data, ["Site_Name"]) as cursor:
